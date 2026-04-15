@@ -1156,10 +1156,9 @@ function App() {
 
           <div className="footer-links footer-secondary-links">
             <a
-              href="#"
-              onClick={(event) => {
-                event.preventDefault();
-              }}
+              href="https://forms.gle/Bm9jtdD3FR3MctZi7"
+              target="_blank"
+              rel="noreferrer"
             >
               Suggest / Report 
             </a>
