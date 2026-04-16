@@ -139,6 +139,22 @@ function normalizeExam(examDate, startTime, endTime) {
   };
 }
 
+function getNormalizedExams(section) {
+  const schedule = section?.sectionSchedule || {};
+  const midExam = normalizeExam(
+    schedule.midExamDate,
+    schedule.midExamStartTime,
+    schedule.midExamEndTime,
+  );
+  const finalExam = normalizeExam(
+    schedule.finalExamDate,
+    schedule.finalExamStartTime,
+    schedule.finalExamEndTime,
+  );
+
+  return [midExam, finalExam].filter(Boolean);
+}
+
 function sectionMatchesFacultyPreferences(section, courseCode, facultyPreference) {
   const perCourseAvoid = facultyPreference?.avoidByCourse || {};
   const globalAvoid = facultyPreference?.avoid || [];
@@ -225,32 +241,169 @@ function sectionsConflictByClass(sectionA, sectionB) {
   return false;
 }
 
-function examsConflict(sectionA, sectionB, type) {
-  const scheduleA = sectionA.sectionSchedule || {};
-  const scheduleB = sectionB.sectionSchedule || {};
+function examsConflict(sectionA, sectionB) {
+  const examsA = getNormalizedExams(sectionA);
+  const examsB = getNormalizedExams(sectionB);
 
-  const examA =
-    type === "MID"
-      ? normalizeExam(scheduleA.midExamDate, scheduleA.midExamStartTime, scheduleA.midExamEndTime)
-      : normalizeExam(scheduleA.finalExamDate, scheduleA.finalExamStartTime, scheduleA.finalExamEndTime);
+  for (const examA of examsA) {
+    for (const examB of examsB) {
+      if (examA.date !== examB.date) {
+        continue;
+      }
 
-  const examB =
-    type === "MID"
-      ? normalizeExam(scheduleB.midExamDate, scheduleB.midExamStartTime, scheduleB.midExamEndTime)
-      : normalizeExam(scheduleB.finalExamDate, scheduleB.finalExamStartTime, scheduleB.finalExamEndTime);
+      if (minutesOverlap(examA.startMinutes, examA.endMinutes, examB.startMinutes, examB.endMinutes)) {
+        return true;
+      }
+    }
+  }
 
-  if (!examA || !examB) return false;
-  if (examA.date !== examB.date) return false;
-
-  return minutesOverlap(examA.startMinutes, examA.endMinutes, examB.startMinutes, examB.endMinutes);
+  return false;
 }
 
 function sectionsConflict(sectionA, sectionB) {
-  return (
-    sectionsConflictByClass(sectionA, sectionB) ||
-    examsConflict(sectionA, sectionB, "MID") ||
-    examsConflict(sectionA, sectionB, "FINAL")
+  return sectionsConflictByClass(sectionA, sectionB) || examsConflict(sectionA, sectionB);
+}
+
+function buildCourseConstraintReason(courses, courseCode, preferences) {
+  const sectionsForCode = courses.filter(
+    (section) => String(section.courseCode || "").toUpperCase() === courseCode,
   );
+
+  if (sectionsForCode.length === 0) {
+    return `${courseCode}: no sections were found in the catalog.`;
+  }
+
+  const afterFaculty = sectionsForCode.filter((section) =>
+    sectionMatchesFacultyPreferences(section, courseCode, preferences.facultyPreference),
+  );
+  if (afterFaculty.length === 0) {
+    return `${courseCode}: all sections were filtered out by faculty preferences.`;
+  }
+
+  const afterPreferredSections = afterFaculty.filter((section) =>
+    sectionMatchesPreferredSections(section, courseCode, preferences.preferredSectionsByCourse),
+  );
+  if (afterPreferredSections.length === 0) {
+    return `${courseCode}: no section matches your preferred section selection.`;
+  }
+
+  const afterSeatFilter = afterPreferredSections.filter((section) =>
+    sectionPassesSeatFilter(section, preferences.ignoreFilledSections),
+  );
+  if (afterSeatFilter.length === 0) {
+    return `${courseCode}: all matching sections are filled (or filtered by seat settings).`;
+  }
+
+  const afterAllowedDays = afterSeatFilter.filter((section) =>
+    sectionFitsAllowedDays(section, preferences.allowedDays),
+  );
+  if (afterAllowedDays.length === 0) {
+    return `${courseCode}: no section fits the selected class days.`;
+  }
+
+  const afterIgnoredSlots = afterAllowedDays.filter((section) =>
+    sectionFitsIgnoredTimeSlots(section, preferences.ignoredTimeSlots),
+  );
+  if (afterIgnoredSlots.length === 0) {
+    return `${courseCode}: all sections conflict with ignored time slots.`;
+  }
+
+  return `${courseCode}: sections exist individually, but no clash-free combination was found.`;
+}
+
+function buildNoRoutineReason(courses, requestedCourseCodes, preferences, candidatesByCourse, searchState) {
+  const coursesWithNoCandidates = requestedCourseCodes.filter((code) => {
+    return !candidatesByCourse.has(code) || (candidatesByCourse.get(code) || []).length === 0;
+  });
+
+  if (coursesWithNoCandidates.length > 0) {
+    const reasons = coursesWithNoCandidates
+      .map((code) => buildCourseConstraintReason(courses, code, preferences))
+      .join(" ");
+
+    return `No routine could be generated because at least one course has no valid section after constraints. ${reasons}`;
+  }
+
+  if (searchState?.timedOut) {
+    return "No routine could be generated within the search time limit. Try fewer courses or relax constraints.";
+  }
+
+  return "No routine could be generated because every possible combination has class-time or exam collisions under current constraints.";
+}
+
+function collectExamsFromSections(sections) {
+  const exams = [];
+  
+  sections.forEach((section) => {
+    const schedule = section.sectionSchedule || {};
+    
+    if (schedule.midExamDate && schedule.midExamStartTime && schedule.midExamEndTime) {
+      exams.push({
+        type: "MID",
+        courseCode: section.courseCode,
+        sectionName: section.sectionName,
+        date: schedule.midExamDate,
+        startTime: schedule.midExamStartTime,
+        endTime: schedule.midExamEndTime,
+        startMinutes: toMinutes(schedule.midExamStartTime),
+        endMinutes: toMinutes(schedule.midExamEndTime),
+      });
+    }
+    
+    if (schedule.finalExamDate && schedule.finalExamStartTime && schedule.finalExamEndTime) {
+      exams.push({
+        type: "FINAL",
+        courseCode: section.courseCode,
+        sectionName: section.sectionName,
+        date: schedule.finalExamDate,
+        startTime: schedule.finalExamStartTime,
+        endTime: schedule.finalExamEndTime,
+        startMinutes: toMinutes(schedule.finalExamStartTime),
+        endMinutes: toMinutes(schedule.finalExamEndTime),
+      });
+    }
+  });
+  
+  return exams.sort((a, b) => {
+    const dateCompare = new Date(a.date) - new Date(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return a.startMinutes - b.startMinutes;
+  });
+}
+
+function detectExamClashes(sections) {
+  const exams = collectExamsFromSections(sections);
+  const clashes = [];
+  
+  for (let i = 0; i < exams.length; i++) {
+    for (let j = i + 1; j < exams.length; j++) {
+      const examA = exams[i];
+      const examB = exams[j];
+      
+      if (examA.date !== examB.date) continue;
+      if (!minutesOverlap(examA.startMinutes, examA.endMinutes, examB.startMinutes, examB.endMinutes)) {
+        continue;
+      }
+      
+      clashes.push({
+        exam1: {
+          type: examA.type,
+          courseCode: examA.courseCode,
+          sectionName: examA.sectionName,
+          time: `${examA.startTime}-${examA.endTime}`,
+        },
+        exam2: {
+          type: examB.type,
+          courseCode: examB.courseCode,
+          sectionName: examB.sectionName,
+          time: `${examB.startTime}-${examB.endTime}`,
+        },
+        date: examA.date,
+      });
+    }
+  }
+  
+  return clashes;
 }
 
 function buildDayUsage(selectedSections) {
@@ -847,7 +1000,15 @@ function generateRoutines(catalogCourses, requestedCourseCodes, rawPreferences =
 
   for (const code of uniqueRequestedCodes) {
     if (!candidatesByCourse.has(code) || candidatesByCourse.get(code).length === 0) {
-      throw new Error("Cannot generate schedule with these constraints");
+      throw new Error(
+        buildNoRoutineReason(
+          catalogCourses,
+          uniqueRequestedCodes,
+          preferences,
+          candidatesByCourse,
+          null,
+        ),
+      );
     }
   }
 
@@ -931,7 +1092,15 @@ function generateRoutines(catalogCourses, requestedCourseCodes, rawPreferences =
   }
 
   if (validSchedules.length === 0) {
-    throw new Error("Cannot generate schedule with these constraints");
+    throw new Error(
+      buildNoRoutineReason(
+        catalogCourses,
+        uniqueRequestedCodes,
+        preferences,
+        candidatesByCourse,
+        searchState,
+      ),
+    );
   }
 
   validSchedules.sort((a, b) =>
@@ -943,16 +1112,32 @@ function generateRoutines(catalogCourses, requestedCourseCodes, rawPreferences =
     ),
   );
 
-  const routines = validSchedules.map((schedule) => ({
-    sections: schedule.selectedSections.map(serializeSection),
-    metrics: schedule.metrics,
-  }));
+  const routines = validSchedules.map((schedule) => {
+    const sections = schedule.selectedSections.map(serializeSection);
+    const exams = collectExamsFromSections(schedule.selectedSections);
+    const clashes = detectExamClashes(schedule.selectedSections);
+
+    return {
+      sections,
+      metrics: schedule.metrics,
+      exams,
+      examClashes: clashes,
+    };
+  });
+
+  const clashFreeRoutines = routines.filter((routine) => (routine.examClashes || []).length === 0);
+
+  if (clashFreeRoutines.length === 0) {
+    throw new Error(
+      "No routine could be generated because every possible combination has exam collisions.",
+    );
+  }
 
   return {
-    routines,
+    routines: clashFreeRoutines,
     stats: {
       totalCombinations: serializeBigIntCount(totalCombinations),
-      generatedRoutines: routines.length,
+      generatedRoutines: clashFreeRoutines.length,
       exploredLeafCount: searchState.exploredLeafCount,
       timedOut: searchState.timedOut,
       reachedResultCap: searchState.reachedResultCap,
@@ -967,4 +1152,6 @@ module.exports = {
   toMinutes,
   serializeSection,
   sectionPassesSeatFilter,
+  collectExamsFromSections,
+  detectExamClashes,
 };

@@ -34,9 +34,19 @@ let sourceHealth = {
 };
 
 function applyCatalog(payload) {
+  let courses = [];
+  let metadata = {};
+
+  if (Array.isArray(payload)) {
+    courses = payload;
+  } else if (typeof payload === "object" && payload !== null) {
+    courses = Array.isArray(payload.courses) ? payload.courses : [];
+    metadata = payload.metadata || {};
+  }
+
   inMemoryCatalog = {
-    metadata: payload.metadata || {},
-    courses: Array.isArray(payload.courses) ? payload.courses : [],
+    metadata,
+    courses,
     loadedAt: new Date().toISOString(),
   };
 }
@@ -220,13 +230,8 @@ app.post("/api/generate-routine", (req, res) => {
     });
   } catch (error) {
     const message = String(error?.message || "");
-    const knownMessage =
-      message === "Cannot generate schedule with these constraints" ||
-      message.includes("At least one course code") ||
-      message.includes("maximum of");
-
     res.status(400).json({
-      error: knownMessage ? message : "Cannot generate schedule with these constraints",
+      error: message || "Cannot generate schedule with these constraints",
     });
   }
 });

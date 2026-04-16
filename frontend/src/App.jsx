@@ -133,6 +133,25 @@ function formatMeetingLabel(meeting) {
   return `${dayLabel} ${meeting?.startTime || "TBA"}-${meeting?.endTime || "TBA"}`;
 }
 
+function formatTime12Hour(time24) {
+  if (!time24) return time24;
+  const [hours, minutes] = String(time24).split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return time24;
+
+  const period = hours >= 12 ? "PM" : "AM";
+  const hours12 = hours % 12 || 12;
+  return `${String(hours12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
+function formatTimeRange12Hour(rangeValue) {
+  if (!rangeValue || !String(rangeValue).includes("-")) {
+    return rangeValue || "TBA";
+  }
+
+  const [start, end] = String(rangeValue).split("-");
+  return `${formatTime12Hour(start)} - ${formatTime12Hour(end)}`;
+}
+
 function getSectionTimingGroups(section) {
   const schedule = section?.sectionSchedule || {};
   const classSchedules = Array.isArray(schedule.classSchedules) ? schedule.classSchedules : [];
@@ -243,6 +262,106 @@ function WeeklyCalendar({ sections }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function ExamSchedule({ exams }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!exams || exams.length === 0) {
+    return <div className="exams-empty">No exam schedule information available.</div>;
+  }
+
+  const sortedExams = [...exams].sort((a, b) => {
+    const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+    if (dateCompare !== 0) return dateCompare;
+    return toMinutes(a.startTime) - toMinutes(b.startTime);
+  });
+
+  const midExams = sortedExams.filter((exam) => String(exam.type || "").toUpperCase() === "MID");
+  const finalExams = sortedExams.filter((exam) => String(exam.type || "").toUpperCase() === "FINAL");
+
+  function renderExamRows(items, emptyMessage) {
+    if (items.length === 0) {
+      return <div className="exam-type-empty">{emptyMessage}</div>;
+    }
+
+    return items.map((exam, idx) => (
+      <div key={`${exam.type}-${exam.courseCode}-${exam.date}-${idx}`} className="exam-item">
+        <span className="exam-course">{exam.courseCode}</span>
+        <span className="exam-date-inline">
+          {new Date(exam.date).toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </span>
+        <span className="exam-time">
+          {formatTime12Hour(exam.startTime)} - {formatTime12Hour(exam.endTime)}
+        </span>
+      </div>
+    ));
+  }
+
+  return (
+    <div className="exams-schedule">
+      <button
+        type="button"
+        className="exams-expand-btn"
+        onClick={() => setIsExpanded((previous) => !previous)}
+      >
+        <span className="expand-icon" aria-hidden="true">{isExpanded ? "▼" : "▶"}</span>
+        <span className="exams-title">Exam Schedule</span>
+        <span className="exams-count">{exams.length} exams</span>
+      </button>
+
+      {isExpanded && (
+        <div className="exams-list">
+          <div className="exam-type-grid">
+            <section className="exam-type-box mid-box">
+              <div className="exam-type-header">MID Exams</div>
+              <div className="exams-for-type">
+                {renderExamRows(midExams, "No mid exams in this routine.")}
+              </div>
+            </section>
+
+            <section className="exam-type-box final-box">
+              <div className="exam-type-header">Final Exams</div>
+              <div className="exams-for-type">
+                {renderExamRows(finalExams, "No final exams in this routine.")}
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExamClashWarning({ clashes }) {
+  if (!clashes || clashes.length === 0) {
+    return <div className="clash-none">✅ No exam clashes detected!</div>;
+  }
+
+  return (
+    <div className="exam-clashes-warning">
+      <h4>⚠️ Exam Clashes Detected!</h4>
+      <div className="clashes-list">
+        {clashes.map((clash, idx) => (
+          <div key={`clash-${idx}`} className="clash-item">
+            <div className="clash-message">
+              <strong>{clash.exam1.courseCode}</strong> ({clash.exam1.type}) 
+              <span className="clash-vs"> vs </span>
+              <strong>{clash.exam2.courseCode}</strong> ({clash.exam2.type})
+            </div>
+            <div className="clash-details">
+              Date: {new Date(clash.date).toLocaleDateString()} | Time: {formatTimeRange12Hour(clash.exam1.time)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -522,14 +641,14 @@ function App() {
     delete routineCardRefs.current[routineKey];
   }
 
-  async function downloadRoutineImage(routineKey, routineNumber) {
+  async function downloadRoutineImage(routineKey, routineNumber, routineData) {
     const cardNode = routineCardRefs.current[routineKey];
     if (!cardNode) {
       setErrorMessage("Could not find this routine card to download.");
       return;
     }
 
-    function triggerDownload(dataUrl) {
+      function downloadImage(dataUrl) {
       const link = document.createElement("a");
       link.href = dataUrl;
       link.download = `routine-${routineNumber}.png`;
@@ -538,6 +657,14 @@ function App() {
       document.body.removeChild(link);
     }
 
+      function downloadJSON(data) {
+        const link = document.createElement("a");
+        link.href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        link.download = `routine-${routineNumber}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     try {
       setDownloadingRoutineKey(routineKey);
       cardNode.classList.add("is-exporting");
@@ -568,7 +695,10 @@ function App() {
           },
         });
 
-        triggerDownload(dataUrl);
+        downloadImage(dataUrl);
+        if (routineData) {
+          setTimeout(() => downloadJSON(routineData), 300);
+        }
       } catch (primaryError) {
         const canvasModule = await import("html2canvas");
         const html2canvas = canvasModule?.default;
@@ -586,7 +716,10 @@ function App() {
           },
         });
 
-        triggerDownload(canvas.toDataURL("image/png"));
+        downloadImage(canvas.toDataURL("image/png"));
+        if (routineData) {
+          setTimeout(() => downloadJSON(routineData), 300);
+        }
       }
     } catch (error) {
       console.error("Routine image download failed", error);
@@ -721,6 +854,14 @@ function App() {
       setRoutines(sorted);
       setRoutineStats(response.data.stats || null);
       setCurrentPage(1);
+
+      if (sorted.length === 0) {
+        setErrorMessage(
+          response.data?.stats?.failureReason ||
+            "No routine could be generated for the selected constraints.",
+        );
+      }
+
       queueResultsScroll();
     } catch (error) {
       setRoutines([]);
@@ -1124,13 +1265,22 @@ function App() {
                   type="button"
                   className="download-routine-button"
                   disabled={downloadingRoutineKey === `routine-${pageStartIndex + index}`}
-                  onClick={() => downloadRoutineImage(`routine-${pageStartIndex + index}`, pageStartIndex + index + 1)}
+                    onClick={() => downloadRoutineImage(`routine-${pageStartIndex + index}`, pageStartIndex + index + 1, routine)}
                 >
-                  {downloadingRoutineKey === `routine-${pageStartIndex + index}` ? "Preparing image..." : "Download Picture"}
+                    {downloadingRoutineKey === `routine-${pageStartIndex + index}` ? "Preparing download..." : "Download Routine"}
                 </button>
               </div>
 
               <WeeklyCalendar sections={routine.sections} />
+
+              <div className="routine-exams-section">
+                {routine.examClashes && routine.examClashes.length > 0 && (
+                  <ExamClashWarning clashes={routine.examClashes} />
+                )}
+                {routine.exams && routine.exams.length > 0 && (
+                  <ExamSchedule exams={routine.exams} />
+                )}
+              </div>
             </article>
           ))}
         </div>
