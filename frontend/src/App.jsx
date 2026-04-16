@@ -267,8 +267,9 @@ function WeeklyCalendar({ sections }) {
   );
 }
 
-function ExamSchedule({ exams }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function ExamSchedule({ exams, defaultExpanded = false, forceExpanded = false }) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const effectiveExpanded = forceExpanded || isExpanded;
 
   if (!exams || exams.length === 0) {
     return <div className="exams-empty">No exam schedule information available.</div>;
@@ -313,12 +314,12 @@ function ExamSchedule({ exams }) {
         className="exams-expand-btn"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
-        <span className="expand-icon" aria-hidden="true">{isExpanded ? "▼" : "▶"}</span>
+        <span className="expand-icon" aria-hidden="true">{effectiveExpanded ? "▼" : "▶"}</span>
         <span className="exams-title">Exam Schedule</span>
         <span className="exams-count">{exams.length} exams</span>
       </button>
 
-      {isExpanded && (
+      {effectiveExpanded && (
         <div className="exams-list">
           <div className="exam-type-grid">
             <section className="exam-type-box mid-box">
@@ -398,6 +399,7 @@ function App() {
   const [sourceLastUpdated, setSourceLastUpdated] = useState(null);
   const [backendLastCheckedAt, setBackendLastCheckedAt] = useState(null);
   const [downloadingRoutineKey, setDownloadingRoutineKey] = useState("");
+  const [exportRoutineKey, setExportRoutineKey] = useState("");
   const routineCardRefs = useRef({});
   const resultsPanelRef = useRef(null);
   const shouldScrollAfterPageChangeRef = useRef(false);
@@ -641,43 +643,89 @@ function App() {
     delete routineCardRefs.current[routineKey];
   }
 
-  async function downloadRoutineImage(routineKey, routineNumber, routineData) {
+  async function downloadRoutineImage(routineKey, routineNumber) {
     const cardNode = routineCardRefs.current[routineKey];
     if (!cardNode) {
       setErrorMessage("Could not find this routine card to download.");
       return;
     }
 
-      function downloadImage(dataUrl) {
+    function waitForFrame() {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    }
+
+    function downloadBlob(blob, fileName) {
+      const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `routine-${routineNumber}.png`;
+      link.href = objectUrl;
+      link.download = fileName;
+      link.rel = "noopener";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     }
 
-      function downloadJSON(data) {
-        const link = document.createElement("a");
-        link.href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-        link.download = `routine-${routineNumber}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+    async function downloadDataUrlAsBlob(dataUrl, fileName) {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      downloadBlob(blob, fileName);
+    }
+
     try {
       setDownloadingRoutineKey(routineKey);
+      setExportRoutineKey(routineKey);
       cardNode.classList.add("is-exporting");
+      await waitForFrame();
+
+      const sourceNode = routineCardRefs.current[routineKey] || cardNode;
+      const exportRoot = document.createElement("div");
+      exportRoot.className = "routine-export-root";
+      document.body.appendChild(exportRoot);
+
+      const exportNode = sourceNode.cloneNode(true);
+      exportNode.classList.add("is-export-clone");
+      exportRoot.appendChild(exportNode);
+      await waitForFrame();
 
       try {
         const imageModule = await import("html-to-image");
+        const toBlob = imageModule?.toBlob;
         const toPng = imageModule?.toPng;
 
-        if (typeof toPng !== "function") {
+        if (typeof toBlob !== "function" && typeof toPng !== "function") {
           throw new Error("Image export function is unavailable");
         }
 
-        const dataUrl = await toPng(cardNode, {
+        const fileName = `routine-${routineNumber}.png`;
+        const blob = typeof toBlob === "function"
+          ? await toBlob(exportNode, {
+            cacheBust: true,
+            pixelRatio: 2,
+            backgroundColor: "#ffffff",
+            filter: (node) => {
+              if (node instanceof HTMLElement && node.classList.contains("download-routine-button")) {
+                return false;
+              }
+
+              return true;
+            },
+            style: {
+              animation: "none",
+              transform: "none",
+              opacity: "1",
+            },
+          })
+          : null;
+
+        if (blob) {
+          downloadBlob(blob, fileName);
+          return;
+        }
+
+        const dataUrl = await toPng(exportNode, {
           cacheBust: true,
           pixelRatio: 2,
           backgroundColor: "#ffffff",
@@ -695,19 +743,16 @@ function App() {
           },
         });
 
-        downloadImage(dataUrl);
-        if (routineData) {
-          setTimeout(() => downloadJSON(routineData), 300);
-        }
-      } catch (primaryError) {
+        await downloadDataUrlAsBlob(dataUrl, fileName);
+      } catch {
         const canvasModule = await import("html2canvas");
         const html2canvas = canvasModule?.default;
 
         if (typeof html2canvas !== "function") {
-          throw primaryError;
+          throw new Error("Canvas export function is unavailable");
         }
 
-        const canvas = await html2canvas(cardNode, {
+        const canvas = await html2canvas(exportNode, {
           backgroundColor: "#ffffff",
           scale: 2,
           useCORS: true,
@@ -716,10 +761,18 @@ function App() {
           },
         });
 
-        downloadImage(canvas.toDataURL("image/png"));
-        if (routineData) {
-          setTimeout(() => downloadJSON(routineData), 300);
-        }
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob((result) => {
+            if (!result) {
+              reject(new Error("Could not convert canvas to image blob"));
+              return;
+            }
+
+            resolve(result);
+          }, "image/png");
+        });
+
+        downloadBlob(blob, `routine-${routineNumber}.png`);
       }
     } catch (error) {
       console.error("Routine image download failed", error);
@@ -727,6 +780,10 @@ function App() {
     } finally {
       cardNode.classList.remove("is-exporting");
       setDownloadingRoutineKey("");
+      setExportRoutineKey("");
+      document.querySelectorAll(".routine-export-root").forEach((node) => {
+        node.remove();
+      });
     }
   }
 
@@ -1256,39 +1313,43 @@ function App() {
         {renderPaginationControls("results-pagination-top")}
 
         <div className="results-stack">
-          {pageRoutines.map((routine, index) => (
-            <article
-              key={`routine-${pageStartIndex + index}`}
-              className="result-card"
-              ref={(node) => registerRoutineCardRef(`routine-${pageStartIndex + index}`, node)}
-            >
-              <div className="result-header">
-                <h3>Routine #{pageStartIndex + index + 1}</h3>
-                <p>
-                  Score: <strong>{Math.round(routine.metrics.score || 0)}</strong> | Days: <strong>{routine.metrics.totalDays}</strong> | Avg Daily: <strong>{formatHoursAsHourMinute(routine.metrics.avgDailyHours)}</strong>
-                </p>
-                <button
-                  type="button"
-                  className="download-routine-button"
-                  disabled={downloadingRoutineKey === `routine-${pageStartIndex + index}`}
-                    onClick={() => downloadRoutineImage(`routine-${pageStartIndex + index}`, pageStartIndex + index + 1, routine)}
-                >
-                    {downloadingRoutineKey === `routine-${pageStartIndex + index}` ? "Preparing download..." : "Download Routine"}
-                </button>
-              </div>
+          {pageRoutines.map((routine, index) => {
+            const routineKey = `routine-${pageStartIndex + index}`;
 
-              <WeeklyCalendar sections={routine.sections} />
+            return (
+              <article
+                key={routineKey}
+                className="result-card"
+                ref={(node) => registerRoutineCardRef(routineKey, node)}
+              >
+                <div className="result-header">
+                  <h3>Routine #{pageStartIndex + index + 1}</h3>
+                  <p>
+                    Score: <strong>{Math.round(routine.metrics.score || 0)}</strong> | Days: <strong>{routine.metrics.totalDays}</strong> | Avg Daily: <strong>{formatHoursAsHourMinute(routine.metrics.avgDailyHours)}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    className="download-routine-button"
+                    disabled={downloadingRoutineKey === routineKey}
+                    onClick={() => downloadRoutineImage(routineKey, pageStartIndex + index + 1)}
+                  >
+                    {downloadingRoutineKey === routineKey ? "Preparing download..." : "Download Routine"}
+                  </button>
+                </div>
 
-              <div className="routine-exams-section">
-                {routine.examClashes && routine.examClashes.length > 0 && (
-                  <ExamClashWarning clashes={routine.examClashes} />
-                )}
-                {routine.exams && routine.exams.length > 0 && (
-                  <ExamSchedule exams={routine.exams} />
-                )}
-              </div>
-            </article>
-          ))}
+                <WeeklyCalendar sections={routine.sections} />
+
+                <div className="routine-exams-section">
+                  {routine.examClashes && routine.examClashes.length > 0 && (
+                    <ExamClashWarning clashes={routine.examClashes} />
+                  )}
+                  {routine.exams && routine.exams.length > 0 && (
+                    <ExamSchedule exams={routine.exams} forceExpanded={exportRoutineKey === routineKey} />
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
 
         {renderPaginationControls("results-pagination-bottom")}

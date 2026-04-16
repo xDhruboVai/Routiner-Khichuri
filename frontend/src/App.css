@@ -1628,6 +1628,121 @@
   }
 }
 
+.routine-export-root {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1240px;
+  background: #ffffff;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.routine-export-root .result-card {
+  width: 1240px !important;
+  max-width: none !important;
+  min-width: 1240px !important;
+  animation: none !important;
+}
+
+.routine-export-root .calendar-legend {
+  flex-direction: row !important;
+}
+
+.routine-export-root .legend-types,
+.routine-export-root .legend-courses {
+  flex-wrap: wrap !important;
+}
+
+.routine-export-root .result-header {
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.routine-export-root .result-header h3 {
+  white-space: nowrap !important;
+}
+
+.routine-export-root .result-header p {
+  flex: 1 1 auto !important;
+  white-space: nowrap !important;
+}
+
+.routine-export-root .calendar-wrapper {
+  padding: 10px !important;
+}
+
+.routine-export-root .calendar-scroll {
+  overflow: visible !important;
+}
+
+.routine-export-root .slot-table {
+  min-width: 980px !important;
+}
+
+.routine-export-root .slot-label {
+  width: 220px !important;
+}
+
+.routine-export-root .slot-cell {
+  min-width: 110px !important;
+}
+
+.routine-export-root .slot-event-card {
+  min-height: 50px !important;
+  padding: 4px 6px !important;
+}
+
+.routine-export-root .slot-event-title {
+  font-size: 0.8rem !important;
+}
+
+.routine-export-root .slot-event-type {
+  font-size: 0.64rem !important;
+}
+
+.routine-export-root .slot-event-meta {
+  font-size: 0.72rem !important;
+}
+
+.routine-export-root .slot-event-seats {
+  font-size: 0.68rem !important;
+}
+
+.routine-export-root .routine-exams-section {
+  display: block !important;
+  padding: 10px 12px !important;
+}
+
+.routine-export-root .exams-schedule {
+  padding: 12px !important;
+}
+
+.routine-export-root .exams-list {
+  display: flex !important;
+}
+
+.routine-export-root .exam-type-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.routine-export-root .exam-type-box {
+  min-width: 0 !important;
+}
+
+.routine-export-root .exam-item {
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+.routine-export-root .exam-time {
+  margin-left: auto !important;
+}
+
+.routine-export-root .exams-expand-btn {
+  cursor: default !important;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .wave,
