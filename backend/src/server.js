@@ -10,7 +10,7 @@ const {
 
 const PORT = process.env.PORT || 4000;
 const COURSE_SOURCE_URL =
-  process.env.COURSE_SOURCE_URL || "https://usis-cdn.eniamza.com/connect-migrate.json";
+  process.env.COURSE_SOURCE_URL || "https://usis-cdn.eniamza.com/connect.json";
 const CATALOG_FETCH_TIMEOUT_MS = Number(process.env.CATALOG_FETCH_TIMEOUT_MS || 30000);
 const CATALOG_REFRESH_INTERVAL_MS = Math.max(
   5000,
