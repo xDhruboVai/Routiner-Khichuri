@@ -794,6 +794,80 @@
   overflow-x: auto;
 }
 
+.calendar-desktop {
+  display: block;
+}
+
+.calendar-mobile {
+  display: none;
+}
+
+.mobile-day-card {
+  border: 1px solid #c7dbf2;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.mobile-day-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mobile-day-card h4 {
+  margin: 0;
+  color: #0f3775;
+  font-size: 0.92rem;
+  font-family: var(--font-heading);
+}
+
+.mobile-day-toggle-meta {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1f4f9b;
+  background: #deecff;
+}
+
+.mobile-day-toggle-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f4f9b;
+  background: #e9f2ff;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobile-day-content {
+  margin-top: 8px;
+}
+
+.mobile-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-day-empty {
+  margin: 0;
+  color: #5f7396;
+  font-style: italic;
+  font-size: 0.84rem;
+}
+
 .slot-table {
   width: 100%;
   border-collapse: collapse;
@@ -1344,6 +1418,213 @@
   .footer-quote {
     text-align: left;
     max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 14px 10px 28px;
+  }
+
+  .hero-header {
+    padding: 16px 14px;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .hero-header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .hero-brand-pill {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+
+  .hero-header h1 {
+    font-size: 1.35rem;
+    line-height: 1.05;
+    letter-spacing: 0.03em;
+  }
+
+  .hero-header p,
+  .source-last-updated-text {
+    font-size: 0.83rem;
+  }
+
+  .panel {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .panel h2 {
+    font-size: 1.05rem;
+  }
+
+  .course-search-area {
+    grid-template-columns: 1fr;
+  }
+
+  .course-search-area button,
+  .generate-button,
+  .download-routine-button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .suggestion-pill,
+  .day-toggle,
+  .ignored-slot-toggle,
+  .preference-tab-btn {
+    min-height: 40px;
+    padding: 8px 11px;
+  }
+
+  .code-chip {
+    max-width: 100%;
+  }
+
+  .faculty-option-list,
+  .section-option-list {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .section-option-chip {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .section-tooltip {
+    display: none;
+  }
+
+  .results-summary {
+    font-size: 0.83rem;
+    padding: 9px 10px;
+    gap: 6px;
+  }
+
+  .result-header {
+    padding: 10px;
+    gap: 7px;
+  }
+
+  .result-header h3 {
+    font-size: 1rem;
+  }
+
+  .result-header p {
+    font-size: 0.83rem;
+    flex: 1 1 100%;
+  }
+
+  .calendar-wrapper {
+    padding: 8px 4px;
+  }
+
+  .slot-table {
+    min-width: 760px;
+  }
+
+  .slot-table thead th {
+    padding: 8px 6px;
+    font-size: 0.76rem;
+  }
+
+  .slot-label {
+    width: 138px;
+    font-size: 0.74rem;
+  }
+
+  .slot-cell {
+    min-width: 86px;
+    padding: 3px;
+  }
+
+  .slot-event-card {
+    padding: 3px 4px;
+    min-height: 42px;
+  }
+
+  .slot-event-title {
+    font-size: 0.72rem;
+  }
+
+  .slot-event-type {
+    font-size: 0.58rem;
+    padding: 1px 4px;
+  }
+
+  .slot-event-meta,
+  .slot-event-seats {
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .routine-exams-section {
+    padding: 9px 10px;
+  }
+
+  .exams-schedule {
+    padding: 10px;
+  }
+
+  .exam-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 0;
+  }
+
+  .exam-time {
+    margin-left: 0;
+  }
+
+  .app-footer {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .footer-credit {
+    font-size: 0.88rem;
+  }
+
+  .footer-links {
+    gap: 6px 10px;
+  }
+
+  .footer-links a {
+    font-size: 0.84rem;
+  }
+
+  .footer-quote {
+    font-size: 0.9rem;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    padding-inline: 8px;
+  }
+
+  .panel,
+  .hero-header,
+  .app-footer {
+    border-radius: 10px;
+  }
+
+  .page-btn {
+    min-width: 34px;
+    padding: 6px 9px;
+    font-size: 0.8rem;
+  }
+
+  .results-pagination {
+    gap: 6px;
   }
 }
 

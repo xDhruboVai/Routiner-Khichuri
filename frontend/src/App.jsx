@@ -1169,8 +1169,14 @@ function App() {
 
           <div className="settings-grid">
             <label>
-              Max Days Per Week
-              <input type="number" min="1" max="7" value={maxDaysPerWeek} onChange={(event) => setMaxDaysPerWeek(Number(event.target.value || 1))} />
+              Max Days Per Week (1-6)
+              <select value={maxDaysPerWeek} onChange={(event) => setMaxDaysPerWeek(Number(event.target.value))}>
+                {[1, 2, 3, 4, 5, 6].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
