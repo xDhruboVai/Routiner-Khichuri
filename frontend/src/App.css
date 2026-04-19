@@ -409,6 +409,10 @@
   margin: 0;
 }
 
+.faculty-option-item.is-tba {
+  flex: 1 1 100%;
+}
+
 .section-pref-grid {
   margin-top: 12px;
   display: grid;

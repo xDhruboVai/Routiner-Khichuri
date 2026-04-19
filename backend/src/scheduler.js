@@ -13,6 +13,19 @@ const SEARCH_TIMEOUT_MS = Number(process.env.SCHEDULER_SEARCH_TIMEOUT_MS || 2000
 const MAX_RETURNED_ROUTINES = Number(process.env.SCHEDULER_MAX_RESULTS || 100);
 const normalizedMeetingCache = new WeakMap();
 
+function normalizeFacultyName(value) {
+  const normalized = String(value || "").toUpperCase().trim();
+  if (!normalized) {
+    return "TBA";
+  }
+
+  if (normalized === "TO BE ANNOUNCED") {
+    return "TBA";
+  }
+
+  return normalized;
+}
+
 function toMinutes(timeValue) {
   if (!timeValue || typeof timeValue !== "string") return null;
   const [hours, minutes] = timeValue.split(":").map(Number);
@@ -162,10 +175,10 @@ function sectionMatchesFacultyPreferences(section, courseCode, facultyPreference
   const avoidForCourse = (Array.isArray(perCourseAvoid[courseCode])
     ? perCourseAvoid[courseCode]
     : globalAvoid
-  ).map((value) => String(value).toUpperCase());
+  ).map((value) => normalizeFacultyName(value));
 
   const avoidSet = new Set(avoidForCourse);
-  const sectionFaculty = String(section.faculties || "").toUpperCase();
+  const sectionFaculty = normalizeFacultyName(section.faculties);
 
   if (avoidSet.has(sectionFaculty)) {
     return false;
@@ -177,7 +190,7 @@ function sectionMatchesFacultyPreferences(section, courseCode, facultyPreference
   const mustHaveForCourse = (Array.isArray(perCourseMustHave[courseCode])
     ? perCourseMustHave[courseCode]
     : globalMustHave
-  ).map((value) => String(value).toUpperCase());
+  ).map((value) => normalizeFacultyName(value));
 
   if (mustHaveForCourse.length > 0 && !mustHaveForCourse.includes(sectionFaculty)) {
     return false;

@@ -33,6 +33,15 @@ let sourceHealth = {
   lastRefreshError: null,
 };
 
+function normalizeFacultyName(value) {
+  const normalized = String(value || "").toUpperCase().trim();
+  if (normalized === "TO BE ANNOUNCED") {
+    return "TBA";
+  }
+
+  return normalized;
+}
+
 function applyCatalog(payload) {
   let courses = [];
   let metadata = {};
@@ -145,23 +154,39 @@ app.get("/api/course-faculties", (req, res) => {
 
   const uniqueCodes = [...new Set(requestedCodes)];
   const facultiesByCourse = {};
+  const hasUnknownFacultyByCourse = {};
 
   uniqueCodes.forEach((code) => {
     facultiesByCourse[code] = [];
+    hasUnknownFacultyByCourse[code] = false;
   });
 
   inMemoryCatalog.courses.forEach((section) => {
     const code = String(section.courseCode || "").toUpperCase();
     if (!facultiesByCourse[code]) return;
 
-    const faculty = String(section.faculties || "").toUpperCase().trim();
-    if (!faculty || faculty === "TBA") return;
+    const rawFaculty = String(section.faculties || "").trim();
+    if (!rawFaculty) {
+      hasUnknownFacultyByCourse[code] = true;
+      return;
+    }
+
+    const faculty = normalizeFacultyName(rawFaculty);
+    if (faculty === "TBA") {
+      hasUnknownFacultyByCourse[code] = true;
+      return;
+    }
 
     facultiesByCourse[code].push(faculty);
   });
 
   uniqueCodes.forEach((code) => {
-    facultiesByCourse[code] = [...new Set(facultiesByCourse[code])].sort((a, b) => a.localeCompare(b));
+    const uniqueFaculties = [...new Set(facultiesByCourse[code])].sort((a, b) => a.localeCompare(b));
+    if (hasUnknownFacultyByCourse[code]) {
+      uniqueFaculties.push("TBA");
+    }
+
+    facultiesByCourse[code] = uniqueFaculties;
   });
 
   res.json({

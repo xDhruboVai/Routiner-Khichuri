@@ -163,6 +163,11 @@ function getSectionTimingGroups(section) {
   };
 }
 
+function isTbaFacultyLabel(value) {
+  const normalized = String(value || "").toUpperCase().trim();
+  return normalized === "TBA" || normalized === "TO BE ANNOUNCED";
+}
+
 function WeeklyCalendar({ sections }) {
   const meetings = useMemo(() => normalizeMeetingsFromSections(sections), [sections]);
   const courseColorMap = useMemo(() => buildCourseColorMap(sections), [sections]);
@@ -539,6 +544,21 @@ function App() {
       .filter((code) => code.includes(query) && !selectedCodes.includes(code))
       .slice(0, 12);
   }, [allCodes, codeQuery, selectedCodes]);
+
+  function getOrderedFacultyOptions(courseCode) {
+    const options = Array.isArray(facultyOptionsByCourse[courseCode])
+      ? [...facultyOptionsByCourse[courseCode]]
+      : [];
+
+    return options.sort((a, b) => {
+      const aIsTba = isTbaFacultyLabel(a);
+      const bIsTba = isTbaFacultyLabel(b);
+
+      if (aIsTba && !bIsTba) return 1;
+      if (!aIsTba && bIsTba) return -1;
+      return String(a).localeCompare(String(b));
+    });
+  }
 
   function addCourseCode(code) {
     const normalized = String(code || "").toUpperCase().trim();
@@ -1104,10 +1124,10 @@ function App() {
                       <div className="course-pref-code">{code}</div>
 
                       <div className="faculty-option-list">
-                        {(facultyOptionsByCourse[code] || []).map((faculty) => (
+                        {getOrderedFacultyOptions(code).map((faculty) => (
                           <label
                             key={`${code}-preferred-${faculty}`}
-                            className={`faculty-option-item ${(facultyPrefsByCourse[code]?.preferredList || []).includes(faculty) ? "is-preferred" : ""}`}
+                            className={`faculty-option-item ${isTbaFacultyLabel(faculty) ? "is-tba" : ""} ${(facultyPrefsByCourse[code]?.preferredList || []).includes(faculty) ? "is-preferred" : ""}`}
                           >
                             <input
                               type="checkbox"
@@ -1120,10 +1140,10 @@ function App() {
                       </div>
 
                       <div className="faculty-option-list">
-                        {(facultyOptionsByCourse[code] || []).map((faculty) => (
+                        {getOrderedFacultyOptions(code).map((faculty) => (
                           <label
                             key={`${code}-avoid-${faculty}`}
-                            className={`faculty-option-item ${(facultyPrefsByCourse[code]?.avoidList || []).includes(faculty) ? "is-avoided" : ""}`}
+                            className={`faculty-option-item ${isTbaFacultyLabel(faculty) ? "is-tba" : ""} ${(facultyPrefsByCourse[code]?.avoidList || []).includes(faculty) ? "is-avoided" : ""}`}
                           >
                             <input
                               type="checkbox"
