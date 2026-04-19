@@ -5,10 +5,73 @@
     <link rel="icon" type="image/png" href="/app-logo.png" />
     <link rel="apple-touch-icon" href="/app-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ROUTINER KHICHURI</title>
+    <meta
+      name="description"
+      content="Build conflict-free class routines with faculty preferences, section filtering, exam clash detection, and seat status visibility so you do not have to recheck seat availability repeatedly."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://routiner-khichuri.vercel.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Routiner Khichuri" />
+    <meta property="og:title" content="Routiner Khichuri | Clash-Free Routine Generator" />
+    <meta
+      property="og:description"
+      content="Build conflict-free class routines with faculty preferences, section filtering, exam clash detection, and seat status visibility so you do not have to recheck seat availability repeatedly."
+    />
+    <meta property="og:url" content="https://routiner-khichuri.vercel.app/" />
+    <meta property="og:image" content="https://routiner-khichuri.vercel.app/app-logo.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Routiner Khichuri | Clash-Free Routine Generator" />
+    <meta
+      name="twitter:description"
+      content="Build conflict-free class routines with faculty preferences, section filtering, exam clash detection, and seat status visibility so you do not have to recheck seat availability repeatedly."
+    />
+    <meta name="twitter:image" content="https://routiner-khichuri.vercel.app/app-logo.png" />
+    <title>Routiner Khichuri | BRACU Routine Generator with Seat Status</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main>
+        <h1>Routiner Khichuri: BRACU Routine Generator</h1>
+        <p>
+          Routiner Khichuri helps BRAC University students generate clash-free class routines quickly.
+          Instead of manually checking every section in USIS, you can pick your course codes, choose preferred
+          faculties, avoid specific faculties, apply day and time constraints, and generate valid combinations
+          in seconds. The routine builder also includes seat status visibility so you can filter out filled
+          sections and focus on options that are still practical to register.
+        </p>
+
+        <h2 id="features">Key Features</h2>
+        <p>
+          The app checks class-time overlap, lab overlap, and exam-time overlap before suggesting a routine.
+          You can set preferred class days, ignore specific time slots, and prioritize fewer class days or lower
+          daily load. Faculty preferences are course-specific, so you can keep one faculty for a course while
+          avoiding another in a different course. When some faculty names are not announced yet, sections are
+          grouped under TBA so you can still include or exclude them intentionally.
+        </p>
+
+        <h2 id="how-it-works">How It Works</h2>
+        <p>
+          The backend fetches the course catalog, normalizes section schedules, and searches for combinations that
+          satisfy your constraints. Valid schedules are ranked using metrics such as total active days, idle gap
+          penalty, and daily span quality. Only exam-clash-free routines are returned. This means the results are
+          usable for actual registration planning, not just rough suggestions.
+        </p>
+
+        <h2 id="quick-links">Quick Links</h2>
+        <p>
+          Navigate quickly: <a href="#features">Features</a>, <a href="#how-it-works">How It Works</a>,
+          <a href="#quick-links">Quick Links</a>, <a href="/">Open Routine Tool</a>.
+          For official academic systems and updates, check <a href="https://www.bracu.ac.bd" rel="noopener noreferrer">BRAC University</a>.
+        </p>
+      </main>
+    </div>
+    <noscript>
+      This application works best with JavaScript enabled. You can still read the overview above and use the
+      quick links for core navigation.
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
