@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+const API_BASE_URL = "https://routiner-khichuri-backend-4nfy.onrender.com";
 const DAY_ORDER = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 const TIME_SLOTS = [
   { label: "08:00 AM-09:20 AM", startTime: "08:00:00", endTime: "09:20:00" },
